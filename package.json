@@ -1,0 +1,19 @@
+{
+  "name": "webapp-starter-template",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "concurrently -n \"server, react\" \"npm:server\" \"npm:frontend\"",
+    "server": "ts-node-dev src/server.ts",
+    "frontend": "node scripts/_start-frontend.js"
+  },
+  "author": "Fabian",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
