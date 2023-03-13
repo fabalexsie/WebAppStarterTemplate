@@ -44,9 +44,7 @@
       "prettier"
     ],
     "rules": {
-      "no-console": [
-        "warn"
-      ]
+      "no-console": "warn"
     },
     "ignorePatterns": [
       "src/serviceWorkerRegistration.ts"

@@ -8,7 +8,7 @@
     "server": "ts-node-dev src/server.ts",
     "frontend": "node scripts/_start-frontend.js",
     "prepare": "husky install",
-    "lint": "eslint src --fix",
+    "lint": "eslint src frontend/src --fix",
     "format": "prettier src --write \"src/**/*.{js,ts,json,md}\" --config ./.prettierrc"
   },
   "author": "Fabian",
@@ -31,8 +31,13 @@
   },
   "lint-staged": {
     "src/**/*.{js,ts,json,md}": [
-      "eslint src --fix",
-      "prettier --write"
+      "prettier --write",
+      "eslint src --fix"
+    ],
+    "frontend/src/**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
+      "prettier --write",
+      "node scripts/abort-if-console-log-used.js",
+      "eslint src --fix"
     ]
   }
 }
