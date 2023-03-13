@@ -1,8 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
 function App() {
+  const [apiResult, setApiResult] = useState('API is loading');
+
+  useEffect(() => {
+    fetch('/api')
+      .then(async (res) => {
+        if (200 <= res.status && res.status < 300) return res.text();
+        else
+          throw new Error(`No success status code (200)\n${await res.text()}`);
+      })
+      .then((resText) => setApiResult(resText))
+      .catch((err) => setApiResult(`${err}`));
+  }, []);
+
   return (
     <div className="App">
       <header className="App-header">
@@ -18,6 +31,11 @@ function App() {
         >
           Learn React
         </a>
+        <p>
+          <small>
+            <pre>{apiResult}</pre>
+          </small>
+        </p>
       </header>
     </div>
   );
