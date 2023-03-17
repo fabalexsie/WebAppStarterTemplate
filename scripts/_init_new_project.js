@@ -36,6 +36,13 @@ const FRMT = {
   },
 };
 
+const TXT = {
+  proj_name: {
+    de: 'Wie soll die WebApp heißen?',
+    en: 'What should the WebApp be named?',
+  },
+};
+
 const log = {
   success: (...args) =>
     args.forEach((arg) =>
@@ -57,6 +64,7 @@ async function multipleChoiceQuestion(questObj) {
     stdin.setRawMode(true);
     stdin.resume();
     stdin.setEncoding('utf8');
+    stdout.write('\u001b[?25l'); // hide cursor
 
     const answers = questObj.answers;
     let selectedOption = questObj.defaultAnswer || 0;
@@ -124,6 +132,7 @@ async function multipleChoiceQuestion(questObj) {
         stdin.removeListener('data', keyListener);
         stdin.setRawMode(false);
         stdin.pause();
+        stdout.write('\u001b[?25h'); // show cursor
         log.answer(answers[selectedOption]);
         resolve(selectedOption);
       } else if (key == '\u0003') {
@@ -170,27 +179,17 @@ function textInputQuestion(question) {
 }
 
 async function getConfig() {
-  //const choice =;
-  //const text =
+  const langNo = await multipleChoiceQuestion({
+    quest: 'Language?',
+    answers: ['deutsch', 'english'],
+    defaultAnswer: 1,
+  });
+
+  const langConv = ['de', 'en'];
+
   return {
-    choice: await multipleChoiceQuestion({
-      quest: 'Frage?',
-      answers: [
-        'Null',
-        'A',
-        'Second',
-        'Dritte',
-        'IV',
-        'fünf',
-        'six',
-        '7th',
-        'eight',
-        '9',
-        '10.',
-      ],
-      defaultAnswer: 2,
-    }),
-    text: await textInputQuestion('Write something'),
+    language: langNo,
+    projectName: await textInputQuestion(TXT['proj_name'][langConv[langNo]]),
   };
 }
 
@@ -202,4 +201,13 @@ getConfig().then((res) => {
   fs.unlink(__filename, () => {
     log.success('Project initialized');
   });
+});
+
+process.on('SIGINT', () => {
+  process.stdout.write(FRMT.reset);
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  process.stdout.write(FRMT.reset);
+  process.exit(0);
 });
