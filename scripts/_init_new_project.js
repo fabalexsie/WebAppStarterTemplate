@@ -36,9 +36,16 @@ const FRMT = {
   },
 };
 
+const log = {
+  success: (...args) =>
+    args.forEach((arg) =>
+      console.log(`${FRMT.fg.green}\u25A0 ${arg}${FRMT.reset}`)
+    ),
+};
+
 // REMOVING this script
 fs.unlink(__filename, () => {
-  console.log(
-    `${FRMT.bg.green}  ${FRMT.reset} ${FRMT.fg.green}Project initialized${FRMT.reset}`
-  );
+  log.success('Project initialized');
 });
+
+log.success('Project initialized');
