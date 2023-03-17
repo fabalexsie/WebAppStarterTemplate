@@ -49,9 +49,8 @@ const log = {
     args.forEach((arg) => console.log(`${FRMT.fg.yellow}${arg}${FRMT.reset}`)),
 };
 
-// ~https://stackoverflow.com/questions/17470554/how-to-capture-the-arrow-keys-in-node-js
 // ~https://stackoverflow.com/a/30687420
-async function createQuestion(questObj) {
+async function multipleChoiceQuestion(questObj) {
   let stdin = process.stdin;
   let stdout = process.stdout;
   stdin.setRawMode(true);
@@ -61,6 +60,7 @@ async function createQuestion(questObj) {
   const answers = questObj.answers;
   let selectedOption = questObj.defaultAnswer || 0;
 
+  // make stdin promisable
   const customMoveCursor = (absX, relY) => {
     return new Promise((resolve) => {
       stdout.cursorTo(absX, undefined, () => {
@@ -74,13 +74,11 @@ async function createQuestion(questObj) {
       });
     });
   };
-
   const customWrite = (text) => {
     return new Promise((resolve) => {
       stdout.write(text, () => resolve());
     });
   };
-
   const customClear = () => {
     new Promise((resolve) => {
       stdout.clearScreenDown(() => resolve());
@@ -103,22 +101,8 @@ async function createQuestion(questObj) {
     await customMoveCursor(0, -answers.length);
   };
 
-  await customWrite(`${questObj.quest}\n`);
+  console.log(`${questObj.quest}`);
   await printAnswers(selectedOption);
-  await printAnswers(selectedOption);
-
-  function toUnicode(theString) {
-    var unicodeString = '';
-    for (var i = 0; i < theString.length; i++) {
-      var theUnicode = theString.charCodeAt(i).toString(16).toUpperCase();
-      while (theUnicode.length < 4) {
-        theUnicode = '0' + theUnicode;
-      }
-      theUnicode = '\\u' + theUnicode;
-      unicodeString += theUnicode;
-    }
-    return unicodeString;
-  }
 
   const keyListener = async (key) => {
     if (key == '\u001B\u005B\u0041' || key == '\u001B\u005B\u0044') {
@@ -145,24 +129,13 @@ async function createQuestion(questObj) {
       await stdout.clearScreenDown();
       stdin.removeListener('data', keyListener);
       process.exit();
-    } else {
-      await customMoveCursor(0);
-      await stdout.clearScreenDown();
-      console.log(toUnicode(key));
     }
   };
 
   stdin.addListener('data', keyListener);
 }
 
-// REMOVING this script
-/*fs.unlink(__filename, () => {
-  log.success('Project initialized');
-});*/
-
-log.success('Project initialized');
-
-createQuestion({
+multipleChoiceQuestion({
   quest: 'Frage?',
   answers: [
     'A',
@@ -181,3 +154,10 @@ createQuestion({
     log.info(selectedAnswer);
   },
 });
+
+// REMOVING this script
+/*fs.unlink(__filename, () => {
+  log.success('Project initialized');
+});*/
+
+log.success('Project initialized');
