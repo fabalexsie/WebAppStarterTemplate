@@ -41,11 +41,143 @@ const log = {
     args.forEach((arg) =>
       console.log(`${FRMT.fg.green}\u25A0 ${arg}${FRMT.reset}`)
     ),
+  info: (...args) =>
+    args.forEach((arg) =>
+      console.log(`${FRMT.fg.blue}\u25A0 ${arg}${FRMT.reset}`)
+    ),
+  answer: (...args) =>
+    args.forEach((arg) => console.log(`${FRMT.fg.yellow}${arg}${FRMT.reset}`)),
 };
 
+// ~https://stackoverflow.com/questions/17470554/how-to-capture-the-arrow-keys-in-node-js
+// ~https://stackoverflow.com/a/30687420
+async function createQuestion(questObj) {
+  let stdin = process.stdin;
+  let stdout = process.stdout;
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding('utf8');
+
+  const answers = questObj.answers;
+  let selectedOption = questObj.defaultAnswer || 0;
+
+  const customMoveCursor = (absX, relY) => {
+    return new Promise((resolve) => {
+      stdout.cursorTo(absX, undefined, () => {
+        if (relY != null) {
+          stdout.moveCursor(0, relY, () => {
+            resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+    });
+  };
+
+  const customWrite = (text) => {
+    return new Promise((resolve) => {
+      stdout.write(text, () => resolve());
+    });
+  };
+
+  const customClear = () => {
+    new Promise((resolve) => {
+      stdout.clearScreenDown(() => resolve());
+    });
+  };
+
+  const printAnswers = async (selectedOption) => {
+    await customMoveCursor(0);
+    await customClear();
+
+    for (const i in answers) {
+      const answ = answers[i];
+      if (i == selectedOption) {
+        await customWrite(`${FRMT.fg.blue}> ${answ}${FRMT.reset}\n`);
+      } else {
+        await customWrite(`${answ}\n`);
+      }
+    }
+
+    await customMoveCursor(0, -answers.length);
+  };
+
+  await customWrite(`${questObj.quest}\n`);
+  await printAnswers(selectedOption);
+  await printAnswers(selectedOption);
+
+  function toUnicode(theString) {
+    var unicodeString = '';
+    for (var i = 0; i < theString.length; i++) {
+      var theUnicode = theString.charCodeAt(i).toString(16).toUpperCase();
+      while (theUnicode.length < 4) {
+        theUnicode = '0' + theUnicode;
+      }
+      theUnicode = '\\u' + theUnicode;
+      unicodeString += theUnicode;
+    }
+    return unicodeString;
+  }
+
+  const keyListener = async (key) => {
+    if (key == '\u001B\u005B\u0041' || key == '\u001B\u005B\u0044') {
+      // up or left
+      selectedOption--;
+      selectedOption = selectedOption < 0 ? answers.length - 1 : selectedOption;
+      await printAnswers(selectedOption);
+    } else if (key == '\u001B\u005B\u0043' || key == '\u001B\u005B\u0042') {
+      // right or down
+      selectedOption++;
+      selectedOption %= answers.length;
+      await printAnswers(selectedOption);
+    } else if (key == '\u000D' || key == '\u0020') {
+      // enter or space
+      await customMoveCursor(0);
+      await stdout.clearScreenDown();
+      stdin.removeListener('data', keyListener);
+      stdin.setRawMode(false);
+      log.answer(answers[selectedOption]);
+      return selectedOption;
+    } else if (key == '\u0003') {
+      // ctrl-c
+      await customMoveCursor(0);
+      await stdout.clearScreenDown();
+      stdin.removeListener('data', keyListener);
+      process.exit();
+    } else {
+      await customMoveCursor(0);
+      await stdout.clearScreenDown();
+      console.log(toUnicode(key));
+    }
+  };
+
+  stdin.addListener('data', keyListener);
+}
+
 // REMOVING this script
-fs.unlink(__filename, () => {
+/*fs.unlink(__filename, () => {
   log.success('Project initialized');
-});
+});*/
 
 log.success('Project initialized');
+
+createQuestion({
+  quest: 'Frage?',
+  answers: [
+    'A',
+    'Second',
+    'Dritte',
+    'IV',
+    'fünf',
+    'six',
+    '7th',
+    'eight',
+    '9',
+    '10.',
+  ],
+  defaultAnswer: 0,
+  callback: (selectedAnswer) => {
+    log.info(selectedAnswer);
+  },
+});
