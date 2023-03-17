@@ -51,91 +51,94 @@ const log = {
 
 // ~https://stackoverflow.com/a/30687420
 async function multipleChoiceQuestion(questObj) {
-  let stdin = process.stdin;
-  let stdout = process.stdout;
-  stdin.setRawMode(true);
-  stdin.resume();
-  stdin.setEncoding('utf8');
+  return new Promise((resolve) => {
+    let stdin = process.stdin;
+    let stdout = process.stdout;
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
 
-  const answers = questObj.answers;
-  let selectedOption = questObj.defaultAnswer || 0;
+    const answers = questObj.answers;
+    let selectedOption = questObj.defaultAnswer || 0;
 
-  // make stdin promisable
-  const customMoveCursor = (absX, relY) => {
-    return new Promise((resolve) => {
-      stdout.cursorTo(absX, undefined, () => {
-        if (relY != null) {
-          stdout.moveCursor(0, relY, () => {
+    // make stdin promisable
+    const customMoveCursor = (absX, relY) => {
+      return new Promise((resolve) => {
+        stdout.cursorTo(absX, undefined, () => {
+          if (relY != null) {
+            stdout.moveCursor(0, relY, () => {
+              resolve();
+            });
+          } else {
             resolve();
-          });
-        } else {
-          resolve();
-        }
+          }
+        });
       });
-    });
-  };
-  const customWrite = (text) => {
-    return new Promise((resolve) => {
-      stdout.write(text, () => resolve());
-    });
-  };
-  const customClear = () => {
-    new Promise((resolve) => {
-      stdout.clearScreenDown(() => resolve());
-    });
-  };
+    };
+    const customWrite = (text) => {
+      return new Promise((resolve) => {
+        stdout.write(text, () => resolve());
+      });
+    };
+    const customClear = () => {
+      new Promise((resolve) => {
+        stdout.clearScreenDown(() => resolve());
+      });
+    };
 
-  const printAnswers = async (selectedOption) => {
-    await customMoveCursor(0);
-    await customClear();
+    const printAnswers = async (selectedOption) => {
+      await customMoveCursor(0);
+      await customClear();
 
-    for (const i in answers) {
-      const answ = answers[i];
-      if (i == selectedOption) {
-        await customWrite(`${FRMT.fg.blue}> ${answ}${FRMT.reset}\n`);
-      } else {
-        await customWrite(`${answ}\n`);
+      for (const i in answers) {
+        const answ = answers[i];
+        if (i == selectedOption) {
+          await customWrite(`${FRMT.fg.yellow}> ${answ}${FRMT.reset}\n`);
+        } else {
+          await customWrite(`${FRMT.fg.blue}${answ}${FRMT.reset}\n`);
+        }
       }
-    }
 
-    await customMoveCursor(0, -answers.length);
-  };
+      await customMoveCursor(0, -answers.length);
+    };
 
-  console.log(`${questObj.quest}`);
-  await printAnswers(selectedOption);
+    console.log(`${questObj.quest}`);
+    printAnswers(selectedOption);
 
-  const keyListener = async (key) => {
-    if (key == '\u001B\u005B\u0041' || key == '\u001B\u005B\u0044') {
-      // up or left
-      selectedOption--;
-      selectedOption = selectedOption < 0 ? answers.length - 1 : selectedOption;
-      await printAnswers(selectedOption);
-    } else if (key == '\u001B\u005B\u0043' || key == '\u001B\u005B\u0042') {
-      // right or down
-      selectedOption++;
-      selectedOption %= answers.length;
-      await printAnswers(selectedOption);
-    } else if (key == '\u000D' || key == '\u0020') {
-      // enter or space
-      await customMoveCursor(0);
-      await stdout.clearScreenDown();
-      stdin.removeListener('data', keyListener);
-      stdin.setRawMode(false);
-      log.answer(answers[selectedOption]);
-      return selectedOption;
-    } else if (key == '\u0003') {
-      // ctrl-c
-      await customMoveCursor(0);
-      await stdout.clearScreenDown();
-      stdin.removeListener('data', keyListener);
-      process.exit();
-    }
-  };
+    const keyListener = async (key) => {
+      if (key == '\u001B\u005B\u0041' || key == '\u001B\u005B\u0044') {
+        // up or left
+        selectedOption--;
+        selectedOption =
+          selectedOption < 0 ? answers.length - 1 : selectedOption;
+        await printAnswers(selectedOption);
+      } else if (key == '\u001B\u005B\u0043' || key == '\u001B\u005B\u0042') {
+        // right or down
+        selectedOption++;
+        selectedOption %= answers.length;
+        await printAnswers(selectedOption);
+      } else if (key == '\u000D' || key == '\u0020') {
+        // enter or space
+        await customMoveCursor(0);
+        await stdout.clearScreenDown();
+        stdin.removeListener('data', keyListener);
+        stdin.setRawMode(false);
+        stdin.pause();
+        log.answer(answers[selectedOption]);
+        resolve(selectedOption);
+      } else if (key == '\u0003') {
+        // ctrl-c
+        await customMoveCursor(0);
+        await stdout.clearScreenDown();
+        stdin.removeListener('data', keyListener);
+        process.exit();
+      }
+    };
 
-  stdin.addListener('data', keyListener);
+    stdin.addListener('data', keyListener);
+  });
 }
-
-multipleChoiceQuestion({
+/*multipleChoiceQuestion({
   quest: 'Frage?',
   answers: [
     'A',
@@ -149,15 +152,54 @@ multipleChoiceQuestion({
     '9',
     '10.',
   ],
-  defaultAnswer: 0,
-  callback: (selectedAnswer) => {
-    log.info(selectedAnswer);
-  },
-});
-
-// REMOVING this script
-/*fs.unlink(__filename, () => {
-  log.success('Project initialized');
+  defaultAnswer: 2,
 });*/
 
-log.success('Project initialized');
+function textInputQuestion(question) {
+  return new Promise((resolve) => {
+    console.log(question);
+
+    process.stdout.write(FRMT.fg.yellow);
+    process.stdin.resume();
+    process.stdin.on('data', (data) => {
+      process.stdout.write(FRMT.reset);
+      process.stdin.pause();
+      resolve(data.trim()); // remove new line
+    });
+  });
+}
+
+async function getConfig() {
+  //const choice =;
+  //const text =
+  return {
+    choice: await multipleChoiceQuestion({
+      quest: 'Frage?',
+      answers: [
+        'Null',
+        'A',
+        'Second',
+        'Dritte',
+        'IV',
+        'fünf',
+        'six',
+        '7th',
+        'eight',
+        '9',
+        '10.',
+      ],
+      defaultAnswer: 2,
+    }),
+    text: await textInputQuestion('Write something'),
+  };
+}
+
+process.stdout.write(FRMT.reset);
+getConfig().then((res) => {
+  console.log(Object.entries(res));
+
+  // REMOVING this script
+  fs.unlink(__filename, () => {
+    log.success('Project initialized');
+  });
+});
