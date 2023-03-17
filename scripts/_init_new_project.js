@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const fs = require('fs');
+const { Stream } = require('stream');
 
 // ~https://logfetch.com/js-console-colors/
 const FRMT = {
@@ -41,12 +42,32 @@ const TXT = {
     de: 'Wie soll die WebApp heißen?',
     en: 'What should the WebApp be named?',
   },
+  renaming_start: {
+    de: 'Dateien und Texte werden umbenannt',
+    en: 'Files and texts are renamed',
+  },
+  renaming_finished: {
+    de: 'Alle Dateien und Texte wurden erfolgreich umbenannt',
+    en: 'All files and texts were successfully renamed',
+  },
+  proj_inited: {
+    de: 'Projekt wurde initialisiert',
+    en: 'Project initialized',
+  },
 };
 
 const log = {
+  wip: (...args) =>
+    args.forEach((arg) =>
+      console.log(`${FRMT.fg.cyan}\u25A0 ${arg}${FRMT.reset}`)
+    ),
   success: (...args) =>
     args.forEach((arg) =>
       console.log(`${FRMT.fg.green}\u25A0 ${arg}${FRMT.reset}`)
+    ),
+  error: (...args) =>
+    args.forEach((arg) =>
+      console.log(`${FRMT.fg.red}\u25A0 ${arg}${FRMT.reset}`)
     ),
   info: (...args) =>
     args.forEach((arg) =>
@@ -54,6 +75,33 @@ const log = {
     ),
   answer: (...args) =>
     args.forEach((arg) => console.log(`${FRMT.fg.yellow}${arg}${FRMT.reset}`)),
+};
+
+// make stdout promisable
+const promOut = {
+  moveCursor: (absX, relY) => {
+    return new Promise((resolve) => {
+      process.stdout.cursorTo(absX, undefined, () => {
+        if (relY != null) {
+          process.stdout.moveCursor(0, relY, () => {
+            resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+    });
+  },
+  write: (text) => {
+    return new Promise((resolve) => {
+      process.stdout.write(text, () => resolve());
+    });
+  },
+  clearScreenDown: () => {
+    return new Promise((resolve) => {
+      process.stdout.clearScreenDown(() => resolve());
+    });
+  },
 };
 
 // ~https://stackoverflow.com/a/30687420
@@ -69,45 +117,20 @@ async function multipleChoiceQuestion(questObj) {
     const answers = questObj.answers;
     let selectedOption = questObj.defaultAnswer || 0;
 
-    // make stdin promisable
-    const customMoveCursor = (absX, relY) => {
-      return new Promise((resolve) => {
-        stdout.cursorTo(absX, undefined, () => {
-          if (relY != null) {
-            stdout.moveCursor(0, relY, () => {
-              resolve();
-            });
-          } else {
-            resolve();
-          }
-        });
-      });
-    };
-    const customWrite = (text) => {
-      return new Promise((resolve) => {
-        stdout.write(text, () => resolve());
-      });
-    };
-    const customClear = () => {
-      new Promise((resolve) => {
-        stdout.clearScreenDown(() => resolve());
-      });
-    };
-
     const printAnswers = async (selectedOption) => {
-      await customMoveCursor(0);
-      await customClear();
+      await promOut.moveCursor(0);
+      await promOut.clearScreenDown();
 
       for (const i in answers) {
         const answ = answers[i];
         if (i == selectedOption) {
-          await customWrite(`${FRMT.fg.yellow}> ${answ}${FRMT.reset}\n`);
+          await promOut.write(`${FRMT.fg.yellow}> ${answ}${FRMT.reset}\n`);
         } else {
-          await customWrite(`${FRMT.fg.blue}${answ}${FRMT.reset}\n`);
+          await promOut.write(`${FRMT.fg.blue}${answ}${FRMT.reset}\n`);
         }
       }
 
-      await customMoveCursor(0, -answers.length);
+      await promOut.moveCursor(0, -answers.length);
     };
 
     console.log(`${questObj.quest}`);
@@ -127,17 +150,18 @@ async function multipleChoiceQuestion(questObj) {
         await printAnswers(selectedOption);
       } else if (key == '\u000D' || key == '\u0020') {
         // enter or space
-        await customMoveCursor(0);
+        await promOut.moveCursor(0);
         await stdout.clearScreenDown();
         stdin.removeListener('data', keyListener);
         stdin.setRawMode(false);
         stdin.pause();
         stdout.write('\u001b[?25h'); // show cursor
         log.answer(answers[selectedOption]);
+        console.log();
         resolve(selectedOption);
       } else if (key == '\u0003') {
         // ctrl-c
-        await customMoveCursor(0);
+        await promOut.moveCursor(0);
         await stdout.clearScreenDown();
         stdin.removeListener('data', keyListener);
         process.exit();
@@ -147,22 +171,6 @@ async function multipleChoiceQuestion(questObj) {
     stdin.addListener('data', keyListener);
   });
 }
-/*multipleChoiceQuestion({
-  quest: 'Frage?',
-  answers: [
-    'A',
-    'Second',
-    'Dritte',
-    'IV',
-    'fünf',
-    'six',
-    '7th',
-    'eight',
-    '9',
-    '10.',
-  ],
-  defaultAnswer: 2,
-});*/
 
 function textInputQuestion(question) {
   return new Promise((resolve) => {
@@ -173,7 +181,50 @@ function textInputQuestion(question) {
     process.stdin.on('data', (data) => {
       process.stdout.write(FRMT.reset);
       process.stdin.pause();
+      console.log();
       resolve(data.trim()); // remove new line
+    });
+  });
+}
+
+async function startProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
+  return new Promise((resolve, reject) => {
+    log.wip(TXT[txtKeyStart][res.language]);
+
+    const outStream = new Stream.Writable();
+    let lines = ['', '', ''];
+
+    let printLastThreeLines = async () => {
+      for (const line of lines) {
+        await promOut.write(` > ${line}\n`);
+      }
+    };
+
+    printLastThreeLines().then(() => {
+      outStream._write = async (chunk, encoding, done) => {
+        lines.push(...chunk.toString().split('\n'));
+        lines = lines.slice(-3);
+
+        await promOut.moveCursor(0, -3);
+        await promOut.clearScreenDown();
+        await printLastThreeLines();
+
+        done();
+      };
+
+      workerFnc(outStream)
+        .then(async () => {
+          await promOut.moveCursor(0, -4);
+          await promOut.clearScreenDown();
+          log.success(TXT[txtKeyFinished][res.language]);
+          resolve(res);
+        })
+        .catch(async () => {
+          await promOut.moveCursor(0, -4);
+          await promOut.clearScreenDown();
+          log.error(`${TXT[txtKeyStart][res.language]} (ERROR)`);
+          reject();
+        });
     });
   });
 }
@@ -188,20 +239,34 @@ async function getConfig() {
   const langConv = ['de', 'en'];
 
   return {
-    language: langNo,
+    language: langConv[langNo],
     projectName: await textInputQuestion(TXT['proj_name'][langConv[langNo]]),
   };
 }
 
 process.stdout.write(FRMT.reset);
-getConfig().then((res) => {
-  console.log(Object.entries(res));
-
-  // REMOVING this script
-  fs.unlink(__filename, () => {
-    log.success('Project initialized');
+getConfig()
+  .then((res) =>
+    startProcess(res, 'renaming_start', 'renaming_finished', (myOut) => {
+      return new Promise((resolve, reject) => {
+        myOut.write('Doinjg step 1\ndoing step 2');
+        setTimeout(() => myOut.write('Doing step 3'), 1500);
+        setTimeout(() => myOut.write('step 4'), 4000);
+        setTimeout(() => myOut.write('5 finished'), 5000);
+        setTimeout(resolve, 10_000); // TODO
+      });
+    })
+  )
+  .then((res) => {
+    // REMOVING this script
+    fs.unlink(__filename, () => {
+      log.success(TXT['proj_inited'][res.language]);
+    });
+  })
+  .catch((err) => {
+    console.error('Stopped with error: ' + err);
+    process.exit(1);
   });
-});
 
 process.on('SIGINT', () => {
   process.stdout.write(FRMT.reset);
