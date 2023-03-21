@@ -50,6 +50,14 @@ const TXT = {
     de: 'Alle Dateien und Texte wurden erfolgreich umbenannt',
     en: 'All files and texts were successfully renamed',
   },
+  git_env_start: {
+    de: '*.env wird aus git entfernt',
+    en: '*.env will be removed from git',
+  },
+  git_env_finished: {
+    de: '*.env wurde erfolgreich aus git entfernt',
+    en: '*.env was successfully removed from git',
+  },
   proj_inited: {
     de: 'Projekt wurde initialisiert',
     en: 'Project initialized',
@@ -247,19 +255,44 @@ async function getConfig() {
 process.stdout.write(FRMT.reset);
 getConfig()
   .then((res) =>
-    startProcess(res, 'renaming_start', 'renaming_finished', (myOut) => {
-      return new Promise((resolve, reject) => {
-        myOut.write('Doinjg step 1\ndoing step 2');
-        setTimeout(() => myOut.write('Doing step 3'), 1500);
-        setTimeout(() => myOut.write('step 4'), 4000);
-        setTimeout(() => myOut.write('5 finished'), 5000);
-        setTimeout(resolve, 10_000); // TODO
-      });
-    })
+    // RENAME app to the given name
+    startProcess(
+      res,
+      'renaming_start',
+      'renaming_finished',
+      (myOut) =>
+        new Promise((resolve, reject) => {
+          myOut.write('Doinjg step 1\ndoing step 2');
+          setTimeout(() => myOut.write('Doing step 3'), 500);
+          setTimeout(() => myOut.write('step 4'), 1000);
+          setTimeout(() => myOut.write('5 finished'), 1500);
+          setTimeout(resolve, 2_000); // TODO
+        })
+    )
+  )
+  .then((res) =>
+    // REMOVE *.env from git
+    startProcess(
+      res,
+      'git_env_start',
+      'git_env_finished',
+      (myOut) =>
+        new Promise((resolve, reject) => {
+          myOut.write('Doinjg step 1\ndoing step 2', () => resolve());
+        })
+    )
   )
   .then((res) => {
     // REMOVING this script
     fs.unlink(__filename, () => {
+      log.success('Removed this script');
+
+      // DO a commit
+      log.info(
+        'Please do a commit to save this initial state. For example with:'
+      );
+      console.log(`git commit -m "Initialized project '${res.projectName}'"`);
+
       log.success(TXT['proj_inited'][res.language]);
     });
   })
