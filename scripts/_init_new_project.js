@@ -166,6 +166,22 @@ const TXT = {
     de: '*.env wurde erfolgreich aus git entfernt',
     en: '*.env was successfully removed from git',
   },
+  npm_install_backend: {
+    de: 'Installation der npm packages (Backend)',
+    en: 'Installing the npm packages (Backend)',
+  },
+  npm_install_backend_finished: {
+    de: 'Installation der npm packages abgeschlossen (Backend)',
+    en: 'Installation of the npm packages completed (Backend)',
+  },
+  npm_install_frontend: {
+    de: 'Installation der npm packages (Frontend)',
+    en: 'Installing the npm packages (Frontend)',
+  },
+  npm_install_frontend_finished: {
+    de: 'Installation der npm packages abgeschlossen (Frontend)',
+    en: 'Installation of the npm packages completed (Frontend)',
+  },
   proj_inited: {
     de: 'Projekt wurde initialisiert',
     en: 'Project initialized',
@@ -176,15 +192,18 @@ const TXT = {
 const promOut = {
   moveCursor: (absX, relY) => {
     return new Promise((resolve) => {
-      process.stdout.cursorTo(absX, undefined, () => {
-        if (relY != null) {
-          process.stdout.moveCursor(0, relY, () => {
+      if (process.stdout.cursorTo || resolve()) {
+        // in debug mode not available
+        process.stdout.cursorTo(absX, undefined, () => {
+          if (relY != null) {
+            process.stdout.moveCursor(0, relY, () => {
+              resolve();
+            });
+          } else {
             resolve();
-          });
-        } else {
-          resolve();
-        }
-      });
+          }
+        });
+      }
     });
   },
   write: (text) => {
@@ -194,7 +213,10 @@ const promOut = {
   },
   clearScreenDown: () => {
     return new Promise((resolve) => {
-      process.stdout.clearScreenDown(() => resolve());
+      if (process.stdout.clearScreenDown || resolve()) {
+        // in debug mode not available
+        process.stdout.clearScreenDown(() => resolve());
+      }
     });
   },
 };
@@ -244,8 +266,10 @@ async function startSubProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
 
         done();
       };
-
-      workerFnc(outStream)
+      Promise.all([
+        workerFnc(outStream),
+        new Promise((resolve) => outStream.on('finish', resolve)), // you have to call stream.end
+      ])
         .then(async () => {
           await promOut.moveCursor(0, -4);
           await promOut.clearScreenDown();
@@ -294,8 +318,9 @@ getConfig()
           myOut.write('Doinjg step 1\ndoing step 2');
           setTimeout(() => myOut.write('Doing step 3'), 50);
           setTimeout(() => myOut.write('step 4'), 100);
-          setTimeout(() => myOut.write('5 finished'), 200);
+          setTimeout(() => myOut.end('5 finished'), 200);
           setTimeout(resolve, 300);
+          resolve();
         })
     )
   )
@@ -307,32 +332,27 @@ getConfig()
         .then(() => promExec('echo .env >> .gitignore', myOut))
         // remove file from git index
         .then(() => promExec('git rm --cached .env', myOut))
+        .then(() => myOut.end())
     )
   )
   .then((res) =>
-    // INSTALL npm in frontend // TODO
-    startSubProcess(res, 'git_env_start', 'git_env_finished', (myOut) =>
-      Promise.resolve()
-        // install backend
-        .then(() => promExec('npm i', myOut))
-        // install frontend
-        .then(() => promExec('cd frontend && npm i', myOut))
-    )
-  )
-  .then((res) =>
-    // INSTALL npm in server // TODO
     startSubProcess(
       res,
-      'git_env_start',
-      'git_env_finished',
+      'npm_install_backend',
+      'npm_install_backend_finished',
       (myOut) =>
-        new Promise((resolve, reject) => {
-          myOut.write('Doinjg step 8\ndoing step 9', () =>
-            setTimeout(() => {
-              resolve();
-            }, 100)
-          );
-        })
+        // install backend
+        promExec('npm i', myOut).then(() => myOut.end())
+    )
+  )
+  .then((res) =>
+    startSubProcess(
+      res,
+      'npm_install_frontend',
+      'npm_install_frontend_finished',
+      (myOut) =>
+        // install frontend
+        promExec('cd frontend && npm i', myOut).then(() => myOut.end())
     )
   )
   .then((res) => {
