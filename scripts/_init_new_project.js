@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
+const { exec } = require('child_process');
 const fs = require('fs');
 const { Stream } = require('stream');
 
@@ -122,7 +123,7 @@ const cnsl = {
         } else if (key == '\u000D' || key == '\u0020') {
           // enter or space
           await promOut.moveCursor(0);
-          await stdout.clearScreenDown();
+          await promOut.clearScreenDown();
           stdin.removeListener('data', keyListener);
           stdin.setRawMode(false);
           stdin.pause();
@@ -133,7 +134,7 @@ const cnsl = {
         } else if (key == '\u0003') {
           // ctrl-c
           await promOut.moveCursor(0);
-          await stdout.clearScreenDown();
+          await promOut.clearScreenDown();
           stdin.removeListener('data', keyListener);
           process.exit();
         }
@@ -198,6 +199,23 @@ const promOut = {
   },
 };
 
+const promExec = (cmd, myOut) => {
+  return new Promise((resolve, reject) => {
+    exec(cmd, async (err, stdout, stderr) => {
+      // await myOut.write('LOG');
+      // await myOut.write(stdout);
+      // await myOut.write('GOL');
+      if (err != null) {
+        reject(err);
+      } else {
+        await myOut.write(cnsl.FRMT.reset);
+        await myOut.write(stdout);
+        resolve(stdout);
+      }
+    });
+  });
+};
+
 async function startSubProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
   return new Promise((resolve, reject) => {
     cnsl.wip(TXT[txtKeyStart][res.language]);
@@ -205,20 +223,24 @@ async function startSubProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
     const outStream = new Stream.Writable();
     let lines = ['', '', ''];
 
-    let printLastThreeLines = async () => {
-      for (const line of lines) {
+    let printThreeLines = async () => {
+      for (const line of lines.filter((l, i) => i < 3)) {
         await promOut.write(` > ${line}\n`);
       }
     };
 
-    printLastThreeLines().then(() => {
+    printThreeLines().then(() => {
       outStream._write = async (chunk, encoding, done) => {
         lines.push(...chunk.toString().split('\n'));
-        lines = lines.slice(-3);
+        //lines = lines.slice(-3);
 
-        await promOut.moveCursor(0, -3);
-        await promOut.clearScreenDown();
-        await printLastThreeLines();
+        while (lines.length > 3) {
+          await promOut.moveCursor(0, -3);
+          await promOut.clearScreenDown();
+          await printThreeLines();
+          lines = lines.slice(1);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
 
         done();
       };
@@ -230,17 +252,19 @@ async function startSubProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
           cnsl.success(TXT[txtKeyFinished][res.language]);
           resolve(res);
         })
-        .catch(async () => {
+        .catch(async (err) => {
           await promOut.moveCursor(0, -4);
-          await promOut.clearScreenDown();
+          // await promOut.clearScreenDown();
           cnsl.error(`${TXT[txtKeyStart][res.language]} (ERROR)`);
-          reject();
+          await promOut.moveCursor(0, 3);
+          reject(err);
         });
     });
   });
 }
 
 async function getConfig() {
+  if (true) return { language: 'de', projectName: 'myName' }; // TODO REMOVE
   const langNo = await cnsl.multipleChoiceQuestion({
     quest: 'Language?',
     answers: ['deutsch', 'english'],
@@ -268,10 +292,10 @@ getConfig()
       (myOut) =>
         new Promise((resolve, reject) => {
           myOut.write('Doinjg step 1\ndoing step 2');
-          setTimeout(() => myOut.write('Doing step 3'), 500);
-          setTimeout(() => myOut.write('step 4'), 1000);
-          setTimeout(() => myOut.write('5 finished'), 1500);
-          setTimeout(resolve, 2_000);
+          setTimeout(() => myOut.write('Doing step 3'), 50);
+          setTimeout(() => myOut.write('step 4'), 100);
+          setTimeout(() => myOut.write('5 finished'), 200);
+          setTimeout(resolve, 300);
         })
     )
   )
@@ -283,7 +307,17 @@ getConfig()
       'git_env_finished',
       (myOut) =>
         new Promise((resolve, reject) => {
-          myOut.write('Doinjg step 1\ndoing step 2', () => resolve());
+          // add to gitignore
+          promExec('echo ".env" >> .gitignore', myOut)
+            // remove file from git index
+            .then(() => promExec('git rm --cached .env', myOut))
+            .then(() => myOut.write('finished git'))
+            .then(() =>
+              setTimeout(() => {
+                resolve();
+              }, 4000)
+            )
+            .catch((err) => reject(err));
         })
     )
   )
@@ -295,7 +329,11 @@ getConfig()
       'git_env_finished',
       (myOut) =>
         new Promise((resolve, reject) => {
-          myOut.write('Doinjg step 1\ndoing step 2', () => resolve());
+          myOut.write('Doinjg step 6\ndoing step 7', () =>
+            setTimeout(() => {
+              resolve();
+            }, 100)
+          );
         })
     )
   )
@@ -307,11 +345,16 @@ getConfig()
       'git_env_finished',
       (myOut) =>
         new Promise((resolve, reject) => {
-          myOut.write('Doinjg step 1\ndoing step 2', () => resolve());
+          myOut.write('Doinjg step 8\ndoing step 9', () =>
+            setTimeout(() => {
+              resolve();
+            }, 100)
+          );
         })
     )
   )
   .then((res) => {
+    if (true) return res;
     // REMOVING this script
     fs.unlink(__filename, () => {
       cnsl.success('Removed this script');
@@ -326,7 +369,7 @@ getConfig()
     });
   })
   .catch((err) => {
-    console.error('Stopped with error: ' + err);
+    console.error('step execution stopped with error:\n' + err);
     process.exit(1);
   });
 
