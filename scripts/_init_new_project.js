@@ -348,41 +348,44 @@ getConfig()
     ])
   )
   .then((cfg) =>
+    // INSTALL backend with npm
     startSubProcess(
       cfg,
       'npm_install_backend',
       'npm_install_backend_finished',
-      [
-        // install backend
-        'npm i',
-      ]
+      ['npm i']
     )
   )
   .then((cfg) =>
+    // INSTALL frontend with npm
     startSubProcess(
       cfg,
       'npm_install_frontend',
       'npm_install_frontend_finished',
-      [
-        // install frontend
-        'cd frontend && npm i',
-      ]
+      ['cd frontend && npm i']
     )
   )
   .then((cfg) => {
     if (true) return cfg;
     // REMOVING this script
-    fs.unlink(__filename, () => {
-      cnsl.success('Removed this script');
-
-      // ASK for doing a commit // TODO committen (..text..)?: <Oder was anderes hier eingeben>
-      cnsl.info(
-        'Please do a commit to save this initial state. For example with:'
-      );
-      console.log(`git commit -m "Initialized project '${cfg.projectName}'"`);
-
-      cnsl.success(TXT['proj_inited'][cfg.language]);
+    return new Promise((resolve) => {
+      fs.unlink(__filename, () => {
+        cnsl.success('Removed this script');
+        resolve(cfg);
+      });
     });
+  })
+  .then((cfg) => {
+    // DO a commit // TODO committen (..text..)?: <Oder was anderes hier eingeben>
+    cnsl.info(
+      'Please do a commit to save this initial state. For example with:'
+    );
+    console.log(`git commit -m "Initialized project '${cfg.projectName}'"`);
+    return cfg;
+  })
+  .then((cfg) => {
+    cnsl.success(TXT['proj_inited'][cfg.language]);
+    return cfg;
   })
   .catch((err) => {
     console.error('step execution stopped with error:\n' + err);
