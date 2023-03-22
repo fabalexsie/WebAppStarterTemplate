@@ -311,18 +311,12 @@ getConfig()
   )
   .then((res) =>
     // INSTALL npm in frontend // TODO
-    startSubProcess(
-      res,
-      'git_env_start',
-      'git_env_finished',
-      (myOut) =>
-        new Promise((resolve, reject) => {
-          myOut.write('Doinjg step 6\ndoing step 7', () =>
-            setTimeout(() => {
-              resolve();
-            }, 100)
-          );
-        })
+    startSubProcess(res, 'git_env_start', 'git_env_finished', (myOut) =>
+      Promise.resolve()
+        // install backend
+        .then(() => promExec('npm i', myOut))
+        // install frontend
+        .then(() => promExec('cd frontend && npm i', myOut))
     )
   )
   .then((res) =>
