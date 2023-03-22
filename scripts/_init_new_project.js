@@ -238,9 +238,22 @@ const promExec = (cmd, myOut) => {
   });
 };
 
-async function startSubProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
+async function startSubProcess(res, txtKeyStart, txtKeyFinished, cmds) {
   return new Promise((resolve, reject) => {
     cnsl.wip(TXT[txtKeyStart][res.language]);
+
+    let workerFnc;
+    if (typeof cmds === 'function') {
+      workerFnc = cmds;
+    } else {
+      workerFnc = (myOut) => {
+        let prom = Promise.resolve();
+        for (const cmd of cmds) {
+          prom = prom.then(() => promExec(cmd, myOut));
+        }
+        prom.then(() => myOut.end());
+      };
+    }
 
     const outStream = new Stream.Writable();
     let lines = ['', '', ''];
@@ -266,6 +279,7 @@ async function startSubProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
 
         done();
       };
+
       Promise.all([
         workerFnc(outStream),
         new Promise((resolve) => outStream.on('finish', resolve)), // you have to call stream.end
@@ -326,23 +340,22 @@ getConfig()
   )
   .then((res) =>
     // REMOVE *.env from git
-    startSubProcess(res, 'git_env_start', 'git_env_finished', (myOut) =>
-      Promise.resolve()
-        // add to gitignore
-        .then(() => promExec('echo .env >> .gitignore', myOut))
-        // remove file from git index
-        .then(() => promExec('git rm --cached .env', myOut))
-        .then(() => myOut.end())
-    )
+    startSubProcess(res, 'git_env_start', 'git_env_finished', [
+      // add to gitignore
+      'echo .env >> .gitignore',
+      // remove file from git index
+      'git rm --cached .env',
+    ])
   )
   .then((res) =>
     startSubProcess(
       res,
       'npm_install_backend',
       'npm_install_backend_finished',
-      (myOut) =>
+      [
         // install backend
-        promExec('npm i', myOut).then(() => myOut.end())
+        'npm i',
+      ]
     )
   )
   .then((res) =>
@@ -350,9 +363,10 @@ getConfig()
       res,
       'npm_install_frontend',
       'npm_install_frontend_finished',
-      (myOut) =>
+      [
         // install frontend
-        promExec('cd frontend && npm i', myOut).then(() => myOut.end())
+        'cd frontend && npm i',
+      ]
     )
   )
   .then((res) => {
