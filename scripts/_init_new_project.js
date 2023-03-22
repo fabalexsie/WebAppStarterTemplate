@@ -182,6 +182,14 @@ const TXT = {
     de: 'Installation der npm packages abgeschlossen (Frontend)',
     en: 'Installation of the npm packages completed (Frontend)',
   },
+  git_commit: {
+    de: 'Erstelle git commit',
+    en: 'Create git Commit',
+  },
+  git_commit_finished: {
+    de: 'Neuen git commit erstellt',
+    en: 'New git commit created',
+  },
   proj_inited: {
     de: 'Projekt wurde initialisiert',
     en: 'Project initialized',
@@ -224,9 +232,6 @@ const promOut = {
 const promExec = (cmd, myOut) => {
   return new Promise((resolve, reject) => {
     exec(cmd, async (err, stdout, stderr) => {
-      // await myOut.write('LOG');
-      // await myOut.write(stdout);
-      // await myOut.write('GOL');
       if (err != null) {
         reject(err);
       } else {
@@ -321,7 +326,7 @@ async function getConfig() {
 
 process.stdout.write(cnsl.FRMT.reset);
 getConfig()
-  .then((cfg) =>
+  /*.then((cfg) =>
     // RENAME app to the given name // TODO
     startSubProcess(cfg, 'renaming_start', 'renaming_finished', (myOut) => {
       const renameInsideFile = (what, path, regex, replacement) => {
@@ -362,7 +367,7 @@ getConfig()
         .then(() => myOut.end());
     })
   )
-  /*.then((cfg) =>
+  .then((cfg) =>
     // REMOVE *.env from git
     startSubProcess(cfg, 'git_env_start', 'git_env_finished', [
       // add to gitignore
@@ -399,14 +404,11 @@ getConfig()
       });
     });
   })*/
-  .then((cfg) => {
-    // DO a commit // TODO committen (..text..)?: <Oder was anderes hier eingeben>
-    cnsl.info(
-      'Please do a commit to save this initial state. For example with:'
-    );
-    console.log(`git commit -m "Initialized project '${cfg.projectName}'"`);
-    return cfg;
-  })
+  .then((cfg) =>
+    startSubProcess(cfg, 'git_commit', 'git_commit_finished', [
+      `git commit -m "Initialized project '${cfg.projectName}'"`,
+    ])
+  )
   .then((cfg) => {
     cnsl.success(TXT['proj_inited'][cfg.language]);
     return cfg;
