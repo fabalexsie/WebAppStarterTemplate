@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const { exec } = require('child_process');
-const fs = require('fs');
+const fsPromise = require('fs/promises');
 const { Stream } = require('stream');
 
 const cnsl = {
@@ -323,19 +323,24 @@ process.stdout.write(cnsl.FRMT.reset);
 getConfig()
   .then((cfg) =>
     // RENAME app to the given name // TODO
-    startSubProcess(
-      cfg,
-      'renaming_start',
-      'renaming_finished',
-      (myOut) =>
-        new Promise((resolve, reject) => {
-          myOut.write('Doinjg step 1\ndoing step 2');
-          setTimeout(() => myOut.write('Doing step 3'), 50);
-          setTimeout(() => myOut.write('step 4'), 100);
-          setTimeout(() => myOut.end('5 finished'), 200);
-          setTimeout(resolve, 300);
-          resolve();
-        })
+    startSubProcess(cfg, 'renaming_start', 'renaming_finished', (myOut) =>
+      Promise.resolve()
+        .then(() => myOut.write('TODO'))
+        .then(() =>
+          fsPromise
+            .readFile('frontend/public/index.html', 'utf-8')
+            .then((data) =>
+              data.replace(
+                /<title>[^<]*<\/title>/gi,
+                `<title>${cfg.projectName}</title>`
+              )
+            )
+            .then((data) =>
+              fsPromise.writeFile('frontend/public/index.html', data)
+            )
+        )
+        .then(() => myOut.write('TODO'))
+        .then(() => myOut.end())
     )
   )
   .then((cfg) =>
@@ -366,7 +371,7 @@ getConfig()
     )
   )
   .then((cfg) => {
-    if (true) return cfg;
+    if (true) return cfg; // TODO REMOVE
     // REMOVING this script
     return new Promise((resolve) => {
       fs.unlink(__filename, () => {
