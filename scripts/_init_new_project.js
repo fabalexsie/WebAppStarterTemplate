@@ -238,9 +238,9 @@ const promExec = (cmd, myOut) => {
   });
 };
 
-async function startSubProcess(res, txtKeyStart, txtKeyFinished, cmds) {
+async function startSubProcess(cfg, txtKeyStart, txtKeyFinished, cmds) {
   return new Promise((resolve, reject) => {
-    cnsl.wip(TXT[txtKeyStart][res.language]);
+    cnsl.wip(TXT[txtKeyStart][cfg.language]);
 
     let workerFnc;
     if (typeof cmds === 'function') {
@@ -287,13 +287,13 @@ async function startSubProcess(res, txtKeyStart, txtKeyFinished, cmds) {
         .then(async () => {
           await promOut.moveCursor(0, -4);
           await promOut.clearScreenDown();
-          cnsl.success(TXT[txtKeyFinished][res.language]);
-          resolve(res);
+          cnsl.success(TXT[txtKeyFinished][cfg.language]);
+          resolve(cfg);
         })
         .catch(async (err) => {
           await promOut.moveCursor(0, -4);
           // await promOut.clearScreenDown();
-          cnsl.error(`${TXT[txtKeyStart][res.language]} (ERROR)`);
+          cnsl.error(`${TXT[txtKeyStart][cfg.language]} (ERROR)`);
           await promOut.moveCursor(0, 3);
           reject(err);
         });
@@ -321,10 +321,10 @@ async function getConfig() {
 
 process.stdout.write(cnsl.FRMT.reset);
 getConfig()
-  .then((res) =>
+  .then((cfg) =>
     // RENAME app to the given name // TODO
     startSubProcess(
-      res,
+      cfg,
       'renaming_start',
       'renaming_finished',
       (myOut) =>
@@ -338,18 +338,18 @@ getConfig()
         })
     )
   )
-  .then((res) =>
+  .then((cfg) =>
     // REMOVE *.env from git
-    startSubProcess(res, 'git_env_start', 'git_env_finished', [
+    startSubProcess(cfg, 'git_env_start', 'git_env_finished', [
       // add to gitignore
       'echo .env >> .gitignore',
       // remove file from git index
       'git rm --cached .env',
     ])
   )
-  .then((res) =>
+  .then((cfg) =>
     startSubProcess(
-      res,
+      cfg,
       'npm_install_backend',
       'npm_install_backend_finished',
       [
@@ -358,9 +358,9 @@ getConfig()
       ]
     )
   )
-  .then((res) =>
+  .then((cfg) =>
     startSubProcess(
-      res,
+      cfg,
       'npm_install_frontend',
       'npm_install_frontend_finished',
       [
@@ -369,8 +369,8 @@ getConfig()
       ]
     )
   )
-  .then((res) => {
-    if (true) return res;
+  .then((cfg) => {
+    if (true) return cfg;
     // REMOVING this script
     fs.unlink(__filename, () => {
       cnsl.success('Removed this script');
@@ -379,9 +379,9 @@ getConfig()
       cnsl.info(
         'Please do a commit to save this initial state. For example with:'
       );
-      console.log(`git commit -m "Initialized project '${res.projectName}'"`);
+      console.log(`git commit -m "Initialized project '${cfg.projectName}'"`);
 
-      cnsl.success(TXT['proj_inited'][res.language]);
+      cnsl.success(TXT['proj_inited'][cfg.language]);
     });
   })
   .catch((err) => {
