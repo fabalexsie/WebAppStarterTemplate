@@ -300,25 +300,13 @@ getConfig()
     )
   )
   .then((res) =>
-    // REMOVE *.env from git // TODO
-    startSubProcess(
-      res,
-      'git_env_start',
-      'git_env_finished',
-      (myOut) =>
-        new Promise((resolve, reject) => {
-          // add to gitignore
-          promExec('echo .env >> .gitignore', myOut)
-            // remove file from git index
-            .then(() => promExec('git rm --cached .env', myOut))
-            .then(() => myOut.write('finished git'))
-            .then(() =>
-              setTimeout(() => {
-                resolve();
-              }, 4000)
-            )
-            .catch((err) => reject(err));
-        })
+    // REMOVE *.env from git
+    startSubProcess(res, 'git_env_start', 'git_env_finished', (myOut) =>
+      Promise.resolve()
+        // add to gitignore
+        .then(() => promExec('echo .env >> .gitignore', myOut))
+        // remove file from git index
+        .then(() => promExec('git rm --cached .env', myOut))
     )
   )
   .then((res) =>
