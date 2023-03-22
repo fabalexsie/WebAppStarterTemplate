@@ -239,7 +239,7 @@ async function startSubProcess(res, txtKeyStart, txtKeyFinished, workerFnc) {
           await promOut.clearScreenDown();
           await printThreeLines();
           lines = lines.slice(1);
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 200)); // TODO: remove
         }
 
         done();
@@ -308,7 +308,7 @@ getConfig()
       (myOut) =>
         new Promise((resolve, reject) => {
           // add to gitignore
-          promExec('echo ".env" >> .gitignore', myOut)
+          promExec('echo .env >> .gitignore', myOut)
             // remove file from git index
             .then(() => promExec('git rm --cached .env', myOut))
             .then(() => myOut.write('finished git'))
