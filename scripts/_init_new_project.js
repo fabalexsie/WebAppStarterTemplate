@@ -302,7 +302,7 @@ async function startSubProcess(cfg, txtKeyStart, txtKeyFinished, cmds) {
 }
 
 async function getConfig() {
-  if (true) return { language: 'de', projectName: 'myName' }; // TODO REMOVE
+  if (true) return { language: 'de', projectName: 'My New App' }; // TODO REMOVE
   const langNo = await cnsl.multipleChoiceQuestion({
     quest: 'Language?',
     answers: ['deutsch', 'english'],
@@ -323,27 +323,46 @@ process.stdout.write(cnsl.FRMT.reset);
 getConfig()
   .then((cfg) =>
     // RENAME app to the given name // TODO
-    startSubProcess(cfg, 'renaming_start', 'renaming_finished', (myOut) =>
+    startSubProcess(cfg, 'renaming_start', 'renaming_finished', (myOut) => {
+      const renameInsideFile = (what, path, regex, replacement) => {
+        return Promise.resolve()
+          .then(() => myOut.write(what))
+          .then(() =>
+            fsPromise
+              .readFile(path, 'utf-8')
+              .then((data) => data.replace(regex, replacement))
+              .then((data) => fsPromise.writeFile(path, data))
+          );
+      };
       Promise.resolve()
-        .then(() => myOut.write('TODO'))
         .then(() =>
-          fsPromise
-            .readFile('frontend/public/index.html', 'utf-8')
-            .then((data) =>
-              data.replace(
-                /<title>[^<]*<\/title>/gi,
-                `<title>${cfg.projectName}</title>`
-              )
-            )
-            .then((data) =>
-              fsPromise.writeFile('frontend/public/index.html', data)
-            )
+          renameInsideFile(
+            'Insert project name in index.html',
+            'frontend/public/index.html',
+            /<title>[^<]*<\/title>/gi,
+            `<title>${cfg.projectName}</title>`
+          )
         )
-        .then(() => myOut.write('TODO'))
-        .then(() => myOut.end())
-    )
+        .then(() =>
+          renameInsideFile(
+            'Insert project name in package.json',
+            'frontend/package.json',
+            /"name": "[^"]*",/gi,
+            `"name": "${cfg.projectName.replace(/\s/g, '-')}-frontend",`
+          )
+        )
+        .then(() =>
+          renameInsideFile(
+            'Insert project name in package.json',
+            'package.json',
+            /"name": "[^"]*",/gi,
+            `"name": "${cfg.projectName.replace(/\s/g, '-')}-backend",`
+          )
+        )
+        .then(() => myOut.end());
+    })
   )
-  .then((cfg) =>
+  /*.then((cfg) =>
     // REMOVE *.env from git
     startSubProcess(cfg, 'git_env_start', 'git_env_finished', [
       // add to gitignore
@@ -379,7 +398,7 @@ getConfig()
         resolve(cfg);
       });
     });
-  })
+  })*/
   .then((cfg) => {
     // DO a commit // TODO committen (..text..)?: <Oder was anderes hier eingeben>
     cnsl.info(
