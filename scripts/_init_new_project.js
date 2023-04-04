@@ -257,6 +257,7 @@ async function startSubProcess(cfg, txtKeyStart, txtKeyFinished, cmds) {
           prom = prom.then(() => promExec(cmd, myOut));
         }
         prom.then(() => myOut.end());
+        return prom;
       };
     }
 
@@ -298,7 +299,7 @@ async function startSubProcess(cfg, txtKeyStart, txtKeyFinished, cmds) {
         .catch(async (err) => {
           await promOut.moveCursor(0, -4);
           // await promOut.clearScreenDown();
-          cnsl.error(`${TXT[txtKeyStart][cfg.language]} (ERROR)`);
+          await cnsl.error(`${TXT[txtKeyStart][cfg.language]} (ERROR)`);
           await promOut.moveCursor(0, 3);
           reject(err);
         });
@@ -307,7 +308,7 @@ async function startSubProcess(cfg, txtKeyStart, txtKeyFinished, cmds) {
 }
 
 async function getConfig() {
-  if (true) return { language: 'de', projectName: 'My New App' }; // TODO REMOVE
+  // if (true) return { language: 'de', projectName: 'My New App' };
   const langNo = await cnsl.multipleChoiceQuestion({
     quest: 'Language?',
     answers: ['deutsch', 'english'],
@@ -326,8 +327,8 @@ async function getConfig() {
 
 process.stdout.write(cnsl.FRMT.reset);
 getConfig()
-  /*.then((cfg) =>
-    // RENAME app to the given name // TODO
+  .then((cfg) =>
+    // RENAME app to the given name
     startSubProcess(cfg, 'renaming_start', 'renaming_finished', (myOut) => {
       const renameInsideFile = (what, path, regex, replacement) => {
         return Promise.resolve()
@@ -394,16 +395,13 @@ getConfig()
       ['cd frontend && npm i']
     )
   )
-  .then((cfg) => {
-    if (true) return cfg; // TODO REMOVE
+  .then(async (cfg) => {
+    // if (true) return cfg;
     // REMOVING this script
-    return new Promise((resolve) => {
-      fs.unlink(__filename, () => {
-        cnsl.success('Removed this script');
-        resolve(cfg);
-      });
-    });
-  })*/
+    await fsPromise.unlink(__filename);
+    await cnsl.success('Removed this script');
+    return cfg;
+  })
   .then((cfg) =>
     startSubProcess(cfg, 'git_commit', 'git_commit_finished', [
       `git commit -m "Initialized project '${cfg.projectName}'"`,
