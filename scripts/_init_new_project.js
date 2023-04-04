@@ -354,7 +354,9 @@ getConfig()
             'Insert project name in package.json',
             'frontend/package.json',
             /"name": "[^"]*",/gi,
-            `"name": "${cfg.projectName.replace(/\s/g, '-')}-frontend",`
+            `"name": "${cfg.projectName
+              .replace(/\s/g, '-')
+              .toLowerCase()}-frontend",`
           )
         )
         .then(() =>
@@ -362,7 +364,9 @@ getConfig()
             'Insert project name in package.json',
             'package.json',
             /"name": "[^"]*",/gi,
-            `"name": "${cfg.projectName.replace(/\s/g, '-')}-backend",`
+            `"name": "${cfg.projectName
+              .replace(/\s/g, '-')
+              .toLowerCase()}-backend",`
           )
         )
         .then(() => myOut.end());
