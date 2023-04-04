@@ -231,7 +231,7 @@ const promOut = {
 
 const promExec = (cmd, myOut) => {
   return new Promise((resolve, reject) => {
-    exec(cmd, async (err, stdout, stderr) => {
+    exec(cmd, async (err, stdout) => {
       if (err != null) {
         reject(err);
       } else {
