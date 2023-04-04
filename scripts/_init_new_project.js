@@ -159,12 +159,12 @@ const TXT = {
     en: 'All files and texts were successfully renamed',
   },
   git_env_start: {
-    de: '*.env wird aus git entfernt',
-    en: '*.env will be removed from git',
+    de: '.env wird aus git entfernt',
+    en: '.env will be removed from git',
   },
   git_env_finished: {
-    de: '*.env wurde erfolgreich aus git entfernt',
-    en: '*.env was successfully removed from git',
+    de: '.env wurde erfolgreich aus git entfernt',
+    en: '.env was successfully removed from git',
   },
   npm_install_backend: {
     de: 'Installation der npm packages (Backend)',
@@ -404,6 +404,7 @@ getConfig()
   })
   .then((cfg) =>
     startSubProcess(cfg, 'git_commit', 'git_commit_finished', [
+      `git add --all`,
       `git commit -m "Initialized project '${cfg.projectName}'"`,
     ])
   )
