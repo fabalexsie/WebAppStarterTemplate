@@ -8,12 +8,15 @@ const UNDERSCORE = '\x1b[4m';
 
 const files = process.argv.slice(2);
 
+let booErrorFound = false;
+
 for (const fileName of files) {
   const fileData = '' + fs.readFileSync(fileName);
   const re = /console\.(?:log|error|warn|debug)/g;
   let match;
   let printedFileName = false;
   while ((match = re.exec(fileData)) != null) {
+    booErrorFound = true;
     if (!printedFileName) {
       console.log(`${UNDERSCORE}${fileName}${NORMAL}`);
       printedFileName = true;
@@ -28,4 +31,4 @@ for (const fileName of files) {
   }
 }
 
-process.exit(1);
+process.exit(booErrorFound ? 1 : 0);
