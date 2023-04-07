@@ -35,10 +35,13 @@
       "prettier --write",
       "eslint src --fix"
     ],
-    "frontend/src/**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
+    "frontend/src/**/*.{js,jsx,ts,tsx,json}": [
       "prettier --write",
       "node scripts/abort-if-console-log-used.js",
       "eslint src --fix"
+    ],
+    "css,scss,md": [
+      "prettier --write"
     ]
   }
 }
