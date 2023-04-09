@@ -7,6 +7,7 @@
     "start": "concurrently -n \"server, react\" \"npm:server\" \"npm:frontend\"",
     "server": "ts-node-dev src/server.ts",
     "frontend": "node scripts/start-frontend.js",
+    "production": "ts-node src/server.ts",
     "prepare": "husky install",
     "lint": "eslint src frontend/src --fix",
     "format": "prettier src --write \"src/**/*.{js,ts,json,md}\" --config ./.prettierrc"
